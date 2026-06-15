@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-agro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-agro_db}
+    volumes:
+      - agro_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U agro -d agro_db || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-agro}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-agro_db}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      YANDEX_WEATHER_KEY: ${YANDEX_WEATHER_KEY:-}
+    ports:
+      - '127.0.0.1:3001:3001'
+
+volumes:
+  agro_pg_data:
